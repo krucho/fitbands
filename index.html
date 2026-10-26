@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>H59MAX</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #161310;
+      --panel: #221c17;
+      --ink: #f6f0e6;
+      --muted: #b5a898;
+      --line: rgba(246, 240, 230, 0.12);
+      --left: #ff8a45;
+      --right: #6ecfc6;
+      --ok: #c6e58a;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--ink);
+      font-family: "Segoe UI", sans-serif;
+      background:
+        radial-gradient(900px 420px at 0% -10%, rgba(255, 138, 69, 0.18), transparent 55%),
+        radial-gradient(800px 380px at 100% 0%, rgba(110, 207, 198, 0.16), transparent 50%),
+        var(--bg);
+    }
+
+    main {
+      width: min(960px, calc(100% - 2rem));
+      margin: 0 auto;
+      padding: 2.2rem 0 3rem;
+    }
+
+    header h1 {
+      margin: 0;
+      font-size: 1.7rem;
+      font-weight: 650;
+      letter-spacing: -0.03em;
+    }
+
+    header p, .hint {
+      color: var(--muted);
+      line-height: 1.45;
+    }
+
+    .panel, .band {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+    }
+
+    .panel { padding: 1rem 1.1rem 1.15rem; margin: 1.2rem 0; }
+
+    .modes { display: flex; gap: 0.4rem; margin-bottom: 0.9rem; }
+
+    .modes button, .actions button, .both {
+      font: inherit;
+      color: var(--ink);
+      background: transparent;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 0.55rem 0.9rem;
+      cursor: pointer;
+    }
+
+    .modes button[aria-pressed="true"] {
+      background: var(--ink);
+      color: #1a1612;
+      border-color: var(--ink);
+    }
+
+    .fields {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.8rem 1rem;
+    }
+
+    label { display: grid; gap: 0.35rem; font-size: 0.92rem; }
+    label span { color: var(--muted); }
+    label strong { font-weight: 650; }
+
+    input[type="range"] { width: 100%; accent-color: #f0d3b0; }
+
+    .bands {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.9rem;
+    }
+
+    .band { padding: 1.15rem 1.15rem 1rem; }
+    .band.left { box-shadow: inset 0 3px 0 var(--left); }
+    .band.right { box-shadow: inset 0 3px 0 var(--right); }
+
+    .eyebrow {
+      margin: 0;
+      font-size: 0.78rem;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    .band h2 { margin: 0.25rem 0 0; font-size: 1.45rem; letter-spacing: -0.03em; }
+    .meta, .status { margin: 0.35rem 0 0; color: var(--muted); }
+    .status.on { color: var(--ok); }
+    .battery {
+      margin: 0.55rem 0 0;
+      font-size: 2rem;
+      font-weight: 650;
+      letter-spacing: -0.04em;
+      font-variant-numeric: tabular-nums;
+    }
+    .battery.low { color: var(--left); }
+    .battery small {
+      margin-left: 0.4rem;
+      font-size: 0.85rem;
+      font-weight: 500;
+      color: var(--muted);
+    }
+
+    .nearby { display: flex; flex-wrap: wrap; gap: 0.45rem; margin-top: 0.8rem; }
+    .nearby:empty { display: none; }
+    .nearby button {
+      font: inherit;
+      color: var(--ink);
+      background: transparent;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 0.55rem 0.9rem;
+      cursor: pointer;
+    }
+    .band.left .go { background: var(--left); color: #2a1408; border-color: transparent; }
+    .band.right .go { background: var(--right); color: #08211f; border-color: transparent; }
+    button:disabled { opacity: 0.4; cursor: default; }
+    button:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+
+    .row { display: flex; gap: 0.5rem; align-items: center; margin-top: 0.9rem; }
+    .both { background: var(--ink); color: #1a1612; border-color: transparent; }
+
+    #log {
+      margin: 1rem 0 0;
+      min-height: 4.5rem;
+      max-height: 9rem;
+      overflow: auto;
+      color: var(--muted);
+      font-family: Consolas, monospace;
+      font-size: 0.82rem;
+      white-space: pre-wrap;
+    }
+
+    @media (max-width: 720px) {
+      .fields, .bands { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <h1>H59MAX</h1>
+      <p>La primera vez elegí qué banda es cada lado. Después el servidor las vuelve a conectar solo. Chrome no puede hacer eso sin el selector.</p>
+    </header>
+
+    <section class="panel">
+      <div class="modes">
+        <button id="modeCut" type="button" aria-pressed="true">Inicio y corte</button>
+        <button id="modeTap" type="button" aria-pressed="false">Toque corto</button>
+      </div>
+      <div class="fields">
+        <label id="pulseField">Pulso <strong id="pulseOut">200 ms</strong>
+          <input id="pulse" type="range" min="40" max="1000" step="10" value="200">
+        </label>
+        <label>Pausa <strong id="gapOut">200 ms</strong>
+          <input id="gap" type="range" min="40" max="1000" step="10" value="200">
+        </label>
+        <label>Repeticiones <strong id="countOut">3</strong>
+          <input id="count" type="range" min="1" max="20" step="1" value="3">
+        </label>
+      </div>
+      <p class="hint" id="hint">Inicio y corte manda el arranque, espera el tiempo del pulso y manda el corte. Por debajo de un segundo la banda puede igual completar un toque mínimo.</p>
+    </section>
+
+    <section class="bands">
+      <article class="band left" data-side="left">
+        <p class="eyebrow">Izquierda</p>
+        <h2 class="name">Sin vincular</h2>
+        <p class="battery">—</p>
+        <p class="meta"></p>
+        <p class="status">—</p>
+        <div class="nearby"></div>
+        <div class="actions">
+          <button type="button" data-act="forget" hidden>Quitar</button>
+          <button type="button" class="go" data-act="go" disabled>Vibrar</button>
+          <button type="button" data-act="stop" disabled>Parar</button>
+          <button type="button" data-act="id" disabled>Identificar</button>
+        </div>
+      </article>
+      <article class="band right" data-side="right">
+        <p class="eyebrow">Derecha</p>
+        <h2 class="name">Sin vincular</h2>
+        <p class="battery">—</p>
+        <p class="meta"></p>
+        <p class="status">—</p>
+        <div class="nearby"></div>
+        <div class="actions">
+          <button type="button" data-act="forget" hidden>Quitar</button>
+          <button type="button" class="go" data-act="go" disabled>Vibrar</button>
+          <button type="button" data-act="stop" disabled>Parar</button>
+          <button type="button" data-act="id" disabled>Identificar</button>
+        </div>
+      </article>
+    </section>
+
+    <div class="row">
+      <button class="both" id="both" type="button" disabled>Vibrar las dos</button>
+      <button id="swap" type="button">Invertir lados</button>
+    </div>
+    <p id="log"></p>
+  </main>
+  <script>
+    const logEl = document.querySelector("#log");
+    let mode = "cut";
+    let state = { left: null, right: null, nearby: [] };
+    let warned = false;
+
+    function log(text) {
+      logEl.textContent += text + "\n";
+      logEl.scrollTop = logEl.scrollHeight;
+    }
+
+    async function post(path, body) {
+      const response = await fetch(path, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body || {}),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.error || "no se pudo hablar con el servidor");
+      return payload;
+    }
+
+    function paintBattery(card, info) {
+      const battery = card.querySelector(".battery");
+      battery.replaceChildren();
+      if (!info || info.battery == null) {
+        battery.textContent = "—";
+        battery.classList.remove("low");
+        return;
+      }
+      battery.textContent = info.battery + "%";
+      battery.classList.toggle("low", info.battery <= 20);
+      if (info.charging) {
+        const note = document.createElement("small");
+        note.textContent = "cargando";
+        battery.append(note);
+      }
+    }
+
+    function render() {
+      for (const side of ["left", "right"]) {
+        const card = document.querySelector(`[data-side="${side}"]`);
+        const info = state[side];
+        const on = Boolean(info?.connected);
+        card.querySelector(".name").textContent = info ? info.name : "Sin vincular";
+        card.querySelector(".meta").textContent = info?.address || "";
+        paintBattery(card, info);
+        const status = card.querySelector(".status");
+        status.textContent = on ? "Conectada" : info ? (info.error || "Buscando…") : "Elegí una de las que aparecen";
+        status.classList.toggle("on", on);
+        card.querySelector("[data-act=forget]").hidden = !info;
+        for (const act of ["go", "stop", "id"]) {
+          card.querySelector(`[data-act="${act}"]`).disabled = !on;
+        }
+        const nearby = card.querySelector(".nearby");
+        const key = info ? "" : (state.nearby || []).map((device) => device.address).join("|");
+        if (card.dataset.nearby !== key) {
+          card.dataset.nearby = key;
+          nearby.replaceChildren();
+          if (!info) {
+            for (const device of state.nearby || []) {
+              const button = document.createElement("button");
+              button.type = "button";
+              button.textContent = device.name;
+              button.onclick = () => post("/api/assign", { side, address: device.address, name: device.name })
+                .then(apply)
+                .catch((error) => log(error.message));
+              nearby.append(button);
+            }
+          }
+        }
+      }
+      document.querySelector("#both").disabled = !state.left?.connected && !state.right?.connected;
+      document.querySelector("#pulseField").hidden = mode !== "cut";
+    }
+
+    function apply(next) {
+      state = next;
+      render();
+    }
+
+    function settings() {
+      return {
+        pulse: Number(document.querySelector("#pulse").value),
+        gap: Number(document.querySelector("#gap").value),
+        count: Number(document.querySelector("#count").value),
+        mode,
+      };
+    }
+
+    document.querySelector(".bands").onclick = (event) => {
+      const button = event.target.closest("button");
+      if (!button || button.parentElement.classList.contains("nearby")) return;
+      const side = button.closest(".band").dataset.side;
+      const act = button.dataset.act;
+      const run = act === "forget"
+        ? post("/api/forget", { side })
+        : act === "go"
+          ? post("/api/vibrate", { side, ...settings() })
+          : act === "stop"
+            ? post("/api/stop", { side })
+            : act === "id"
+              ? post("/api/identify", { side })
+              : null;
+      if (run) run.then(apply).catch((error) => log(error.message));
+    };
+
+    document.querySelector("#both").onclick = () => {
+      post("/api/vibrate", { side: "both", ...settings() }).then(apply).catch((error) => log(error.message));
+    };
+    document.querySelector("#swap").onclick = () => {
+      post("/api/swap").then(apply).catch((error) => log(error.message));
+    };
+
+    function setMode(next) {
+      mode = next;
+      document.querySelector("#modeCut").setAttribute("aria-pressed", String(next === "cut"));
+      document.querySelector("#modeTap").setAttribute("aria-pressed", String(next === "tap"));
+      document.querySelector("#hint").textContent = next === "cut"
+        ? "Inicio y corte manda el arranque, espera el tiempo del pulso y manda el corte. Por debajo de un segundo la banda puede igual completar un toque mínimo."
+        : "Toque corto manda el zumbido de una notificación. La duración de cada toque la fija la banda; la pausa es el silencio entre uno y el siguiente.";
+      render();
+    }
+
+    document.querySelector("#modeCut").onclick = () => setMode("cut");
+    document.querySelector("#modeTap").onclick = () => setMode("tap");
+
+    for (const id of ["pulse", "gap", "count"]) {
+      const input = document.querySelector("#" + id);
+      const out = document.querySelector("#" + id + "Out");
+      const paint = () => { out.textContent = id === "count" ? input.value : input.value + " ms"; };
+      input.addEventListener("input", paint);
+      paint();
+    }
+
+    async function tick() {
+      try {
+        const response = await fetch("/api/state");
+        if (!response.ok) throw new Error("api");
+        apply(await response.json());
+      } catch {
+        if (!warned) {
+          warned = true;
+          log("El servidor viejo sigue abierto. Cerrá esa ventana y volvé a abrir abrir-server.bat.");
+        }
+      }
+    }
+
+    render();
+    tick();
+    setInterval(tick, 2000);
+  </script>
+</body>
+</html>
