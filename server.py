@@ -42,6 +42,7 @@ radio = asyncio.Lock()
 sides = {"left": None, "right": None}
 links = {}
 seen = {}
+known = {}
 tasks = {"left": None, "right": None}
 
 
@@ -145,11 +146,16 @@ async def maintain() -> None:
             fresh = {}
             for device, adv in found.values():
                 name = device.name or adv.local_name or ""
-                if not name.upper().startswith("H59MAX"):
+                if "H59" not in name.upper():
                     continue
                 fresh[device.address.upper()] = {"device": device, "name": name}
             seen.clear()
             seen.update(fresh)
+            now = time.monotonic()
+            for address, item in fresh.items():
+                known[address] = {"name": item["name"], "device": item["device"], "last": now}
+            if fresh:
+                print("vistas:", ", ".join(item["name"] for item in fresh.values()))
             for address, item in fresh.items():
                 if side_of(address) is None:
                     continue
@@ -196,10 +202,28 @@ def snapshot() -> dict:
     assigned = {slot["address"] for slot in sides.values() if slot}
     nearby = [
         {"name": item["name"], "address": address}
-        for address, item in seen.items()
+        for address, item in known.items()
         if address not in assigned
     ]
     return {"left": slot_view("left"), "right": slot_view("right"), "nearby": nearby}
+
+
+async def scan_now() -> dict:
+    async with radio:
+        found = await BleakScanner.discover(timeout=8, return_adv=True)
+    now = time.monotonic()
+    fresh = {}
+    for device, adv in found.values():
+        name = device.name or adv.local_name or ""
+        if "H59" not in name.upper():
+            continue
+        address = device.address.upper()
+        fresh[address] = {"device": device, "name": name}
+        known[address] = {"name": name, "device": device, "last": now}
+    seen.clear()
+    seen.update(fresh)
+    print("vistas:", ", ".join(item["name"] for item in fresh.values()) or "ninguna")
+    return snapshot()
 
 
 async def run_pulses(side: str, mode: str, pulse: int, gap: int, count: int) -> None:
@@ -247,7 +271,7 @@ async def identify(side: str) -> None:
 
 
 async def connect_if_seen(address: str) -> None:
-    item = seen.get(address)
+    item = seen.get(address) or known.get(address)
     if not item:
         return
     link = links.get(address)
@@ -329,6 +353,9 @@ class Handler(SimpleHTTPRequestHandler):
         path = self.path.split("?", 1)[0]
         try:
             body = self.read_json()
+            if path == "/api/scan":
+                self.send_json(self.call(scan_now()))
+                return
             if path == "/api/assign":
                 self.send_json(self.call(do_assign(body["side"], body["address"], body.get("name") or "")))
                 return

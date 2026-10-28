@@ -192,6 +192,7 @@
         <p class="status">—</p>
         <div class="nearby"></div>
         <div class="actions">
+          <button type="button" data-act="scan">Buscar</button>
           <button type="button" data-act="forget" hidden>Quitar</button>
           <button type="button" class="go" data-act="go" disabled>Vibrar</button>
           <button type="button" data-act="stop" disabled>Parar</button>
@@ -206,6 +207,7 @@
         <p class="status">—</p>
         <div class="nearby"></div>
         <div class="actions">
+          <button type="button" data-act="scan">Buscar</button>
           <button type="button" data-act="forget" hidden>Quitar</button>
           <button type="button" class="go" data-act="go" disabled>Vibrar</button>
           <button type="button" data-act="stop" disabled>Parar</button>
@@ -268,9 +270,17 @@
         card.querySelector(".meta").textContent = info?.address || "";
         paintBattery(card, info);
         const status = card.querySelector(".status");
-        status.textContent = on ? "Conectada" : info ? (info.error || "Buscando…") : "Elegí una de las que aparecen";
+        const choices = state.nearby || [];
+        status.textContent = on
+          ? "Conectada"
+          : info
+            ? (info.error || "Buscando…")
+            : choices.length
+              ? "Elegí una para este lado."
+              : "No aparece otra. Desconectala del teléfono y tocá Buscar.";
         status.classList.toggle("on", on);
         card.querySelector("[data-act=forget]").hidden = !info;
+        card.querySelector("[data-act=scan]").hidden = Boolean(info);
         for (const act of ["go", "stop", "id"]) {
           card.querySelector(`[data-act="${act}"]`).disabled = !on;
         }
@@ -283,7 +293,7 @@
             for (const device of state.nearby || []) {
               const button = document.createElement("button");
               button.type = "button";
-              button.textContent = device.name;
+              button.textContent = "Agregar " + device.name;
               button.onclick = () => post("/api/assign", { side, address: device.address, name: device.name })
                 .then(apply)
                 .catch((error) => log(error.message));
@@ -317,6 +327,8 @@
       const act = button.dataset.act;
       const run = act === "forget"
         ? post("/api/forget", { side })
+        : act === "scan"
+          ? post("/api/scan")
         : act === "go"
           ? post("/api/vibrate", { side, ...settings() })
           : act === "stop"

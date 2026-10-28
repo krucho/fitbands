@@ -29,7 +29,7 @@ abrir-server.bat
 
 También se puede arrancar con `python server.py`. La ventana que se abre es el servidor: tiene que quedar abierta. Cerrarla lo detiene. La página queda en [http://127.0.0.1:8000](http://127.0.0.1:8000).
 
-La primera vez, en cada lado vacío aparecen las bandas cercanas. Se elige una vez. La asignación queda en `bandas.json`, que es local y no se versiona.
+La primera vez, en el lado vacío tocá **Buscar**. La banda tiene que estar desconectada del teléfono. Cuando aparece, **Agregar** la asigna a ese lado. La elección queda en `bandas.json`, que es local y no se versiona.
 
 Si el `.bat` se abre con el servidor ya corriendo, esa ventana toma el puerto y pasa a ser la dueña.
 
